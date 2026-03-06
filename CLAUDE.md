@@ -4,47 +4,43 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-Single-file Python script (`ai-brief.py`) that fetches AI/LLM stories from the Hacker News Algolia API (last 24 hours) and emails a formatted daily digest using the `gog` CLI tool for Gmail sending.
+**newsdigest** is a configurable Python CLI tool that fetches news from Hacker News (Algolia API) and RSS feeds, then emails a formatted daily digest using SMTP. It supports YAML-based configuration, deduplication across categories, and includes an OpenClaw skill for automated scheduling.
 
 ## Setup
 
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -e .
 ```
 
-Configuration lives in `.env` (not committed — see `.gitignore`):
-
-```
-GOG_CMD=/opt/homebrew/bin/gog
-AI_BRIEF_FROM=sender@gmail.com
-AI_BRIEF_TO=recipient@gmail.com
-GOG_KEYRING_PASSWORD=...
-```
+Configuration:
+- Copy `config.example.yaml` to `config.yaml` and edit with your email settings
+- Copy `.env.example` to `.env` and add your `SMTP_PASSWORD` (Gmail App Password)
 
 ## Running
 
 ```bash
 source venv/bin/activate
-python3 ai-brief.py
-```
 
-## Running
+# Dry-run (prints to stdout)
+newsdigest --dry-run
 
-Dry-run mode (prints email to stdout without sending):
+# Send email
+newsdigest
 
-```bash
-source venv/bin/activate
-python3 ai-brief.py --dry-run
+# Custom config path
+newsdigest --config /path/to/config.yaml
 ```
 
 ## Architecture
 
-- **Data source**: HN Algolia search API, queried with a Unix timestamp filter for the last 24h
-- **Search categories**: Supply Chain AI, Blue Yonder & Competitors, Enterprise AI / Agents, LLM & Language Models — defined in the `CATEGORIES` list
+- **Single module**: `newsdigest.py` — installed as CLI entry point via pyproject.toml
+- **Data sources**: HN Algolia search API + RSS feeds via feedparser
+- **Config**: `config.yaml` (YAML) for categories, SMTP settings; `.env` for SMTP_PASSWORD
+- **Categories**: Defined in config.yaml with optional `hn_query`, `rss_feeds`, and `limit`
 - **Deduplication**: Stories seen in earlier categories are skipped in later ones
-- **Sorting**: Stories within each category are sorted by points (most engaging first)
-- **Email delivery**: Shells out to `gog gmail send --body` (plain text) and `--body-html` (rich HTML) — no temp files
-- **Output format**: Both plain-text and HTML versions are built and passed inline to `gog`
+- **Sorting**: HN stories by points desc, RSS by publish date desc; merged: HN first then RSS
+- **Email delivery**: `smtplib.SMTP_SSL` with `MIMEMultipart("alternative")` for HTML + plain text
 - **Dry-run**: `--dry-run` flag prints the email to stdout instead of sending
+- **OpenClaw**: Skill at `openclaw/SKILL.md` for automated daily digest via cron

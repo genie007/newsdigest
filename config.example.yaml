@@ -1,0 +1,27 @@
+smtp:
+  host: smtp.gmail.com
+  port: 465
+  from: you@gmail.com
+  to: recipient@gmail.com
+
+time_window: 24  # hours
+
+categories:
+  - name: "Supply Chain AI"
+    hn_query: "AI supply chain logistics planning"
+    rss_feeds:
+      - https://www.supplychaindive.com/feeds/news/
+    limit: 5
+  - name: "Blue Yonder & Competitors"
+    hn_query: '"Blue Yonder" OR "Kinaxis" OR "o9 Solutions" OR "Manhattan Associates" OR "SAP IBP"'
+    limit: 5
+  - name: "Enterprise AI / Agents"
+    hn_query: "AI agent enterprise automation workflow"
+    rss_feeds:
+      - https://venturebeat.com/category/ai/feed/
+    limit: 5
+  - name: "LLM & Language Models"
+    hn_query: "LLM language model"
+    rss_feeds:
+      - https://www.technologyreview.com/topic/artificial-intelligence/feed
+    limit: 5

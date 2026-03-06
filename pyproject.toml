@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "newsdigest"
+version = "0.1.0"
+description = "Configurable news digest via email - pulls from Hacker News and RSS feeds"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+dependencies = ["python-dotenv", "feedparser", "pyyaml"]
+
+[project.scripts]
+newsdigest = "newsdigest:main"
+
+[tool.setuptools]
+py-modules = ["newsdigest"]
