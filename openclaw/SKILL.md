@@ -17,18 +17,20 @@ Run `newsdigest` to fetch stories from configured Hacker News queries and RSS fe
 
 ## Workflow
 
-1. `cd` to the newsdigest project directory (wherever it is installed)
-2. Run `newsdigest` to send the email digest
-3. If it fails, run `newsdigest --dry-run` to diagnose (prints output to stdout without sending)
-4. Report success or failure back to the user
+1. Run `newsdigest` to send the email digest
+   - newsdigest is configured with `delivery: gog` so it uses the gog CLI directly
+   - No password or credentials are needed — gog is already authenticated via OpenClaw
+2. If it fails, run `newsdigest --dry-run` to diagnose (prints output to stdout without sending)
+3. Report success or failure back to the user
 
 ## Inputs
 
-None required. The tool reads configuration from `config.yaml` and credentials from `.env` in the project directory.
+None required. The tool reads configuration from `config.yaml` in the project directory.
 
 ## Failure handling
 
-- **SMTP failure**: Report the error message. Common causes: expired app password, network issue, wrong port.
+- **gog CLI not found**: Ensure gog is installed and on PATH. Run `which gog` to check.
+- **gog send failure**: Check `gog gmail send` stderr output. Common causes: gog not authenticated, invalid account.
 - **No stories found**: Report that no matching stories were found in the configured time window.
 - **Config missing**: If `config.yaml` is not found, tell the user to copy `config.example.yaml` and edit it.
 

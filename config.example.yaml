@@ -1,8 +1,14 @@
+# Delivery mode: "smtp" (standalone) or "gog" (uses gog CLI, no password needed)
+delivery: smtp
+
+email:
+  from: you@gmail.com
+  to: recipient@gmail.com
+
+# Only needed when delivery: smtp
 smtp:
   host: smtp.gmail.com
   port: 465
-  from: you@gmail.com
-  to: recipient@gmail.com
 
 time_window: 24  # hours
 

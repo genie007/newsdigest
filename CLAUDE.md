@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-**newsdigest** is a configurable Python CLI tool that fetches news from Hacker News (Algolia API) and RSS feeds, then emails a formatted daily digest using SMTP. It supports YAML-based configuration, deduplication across categories, and includes an OpenClaw skill for automated scheduling.
+**newsdigest** is a configurable Python CLI tool that fetches news from Hacker News (Algolia API) and RSS feeds, then emails a formatted daily digest. It supports two delivery modes: SMTP (standalone) and gog CLI (no password needed). Configuration is YAML-based with deduplication across categories. Includes an OpenClaw skill for automated scheduling.
 
 ## Setup
 
@@ -16,7 +16,9 @@ pip install -e .
 
 Configuration:
 - Copy `config.example.yaml` to `config.yaml` and edit with your email settings
-- Copy `.env.example` to `.env` and add your `SMTP_PASSWORD` (Gmail App Password)
+- Set `delivery: smtp` or `delivery: gog` depending on your setup
+- For SMTP mode: copy `.env.example` to `.env` and add your `SMTP_PASSWORD`
+- For gog mode: no credentials needed (gog must be authenticated)
 
 ## Running
 
@@ -37,10 +39,11 @@ newsdigest --config /path/to/config.yaml
 
 - **Single module**: `newsdigest.py` — installed as CLI entry point via pyproject.toml
 - **Data sources**: HN Algolia search API + RSS feeds via feedparser
-- **Config**: `config.yaml` (YAML) for categories, SMTP settings; `.env` for SMTP_PASSWORD
+- **Config**: `config.yaml` (YAML) for categories, delivery mode, email addresses; `.env` for SMTP_PASSWORD
+- **Delivery modes**: `smtp` (smtplib.SMTP_SSL, needs SMTP_PASSWORD) or `gog` (shells out to gog CLI)
 - **Categories**: Defined in config.yaml with optional `hn_query`, `rss_feeds`, and `limit`
 - **Deduplication**: Stories seen in earlier categories are skipped in later ones
 - **Sorting**: HN stories by points desc, RSS by publish date desc; merged: HN first then RSS
-- **Email delivery**: `smtplib.SMTP_SSL` with `MIMEMultipart("alternative")` for HTML + plain text
+- **Email delivery**: SMTP via `smtplib.SMTP_SSL` or gog via `subprocess.run`
 - **Dry-run**: `--dry-run` flag prints the email to stdout instead of sending
 - **OpenClaw**: Skill at `openclaw/SKILL.md` for automated daily digest via cron

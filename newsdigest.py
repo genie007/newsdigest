@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import smtplib
+import subprocess
 import time
 import urllib.parse
 import urllib.request
@@ -48,14 +49,46 @@ def load_config(path: str) -> dict:
         raise SystemExit(1)
     with open(path) as fh:
         config = yaml.safe_load(fh)
-    for key in ("smtp", "categories"):
-        if key not in config:
-            log.error("Missing required config key: %s", key)
+
+    if "categories" not in config:
+        log.error("Missing required config key: categories")
+        raise SystemExit(1)
+
+    delivery_mode = config.get("delivery", "smtp")
+    if delivery_mode not in ("smtp", "gog"):
+        log.error("Invalid delivery mode %r — must be 'smtp' or 'gog'", delivery_mode)
+        raise SystemExit(1)
+    config["delivery"] = delivery_mode
+
+    # Resolve from/to addresses
+    email_section = config.get("email", {})
+    smtp_section = config.get("smtp", {})
+
+    if delivery_mode == "smtp":
+        # smtp section is required
+        if "smtp" not in config:
+            log.error("Missing required config key: smtp (needed for delivery: smtp)")
             raise SystemExit(1)
-    for key in ("host", "port", "from", "to"):
-        if key not in config["smtp"]:
-            log.error("Missing smtp.%s in config", key)
+        for key in ("host", "port"):
+            if key not in smtp_section:
+                log.error("Missing smtp.%s in config", key)
+                raise SystemExit(1)
+        # from/to can come from email section or smtp section
+        from_addr = email_section.get("from") or smtp_section.get("from")
+        to_addr = email_section.get("to") or smtp_section.get("to")
+        if not from_addr or not to_addr:
+            log.error("Missing from/to address — set in email or smtp section")
             raise SystemExit(1)
+    else:
+        # gog mode: from/to from email section (or smtp fallback)
+        from_addr = email_section.get("from") or smtp_section.get("from")
+        to_addr = email_section.get("to") or smtp_section.get("to")
+        if not from_addr or not to_addr:
+            log.error("Missing email.from / email.to in config (needed for delivery: gog)")
+            raise SystemExit(1)
+
+    config["_from"] = from_addr
+    config["_to"] = to_addr
     return config
 
 
@@ -245,6 +278,30 @@ def send_email(
     log.info("Email sent successfully.")
 
 
+def send_email_gog(
+    from_addr: str,
+    to_addr: str,
+    subject: str,
+    plain_text: str,
+    html_body: str,
+) -> None:
+    """Send email using the gog CLI."""
+    cmd = [
+        "gog", "gmail", "send",
+        "--to", to_addr,
+        "--account", from_addr,
+        "--subject", subject,
+        "--body", plain_text,
+        "--body-html", html_body,
+        "--force",
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode != 0:
+        log.error("gog send failed (exit %d): %s", result.returncode, result.stderr.strip())
+        raise SystemExit(1)
+    log.info("Email sent via gog successfully.")
+
+
 # -- Main ---------------------------------------------------------------------
 
 def main():
@@ -254,7 +311,7 @@ def main():
     args = parser.parse_args()
 
     config = load_config(args.config)
-    smtp_config = config["smtp"]
+    delivery_mode = config["delivery"]
     time_window_hours = config.get("time_window", 24)
     since_ts = int((datetime.now() - timedelta(hours=time_window_hours)).timestamp())
 
@@ -278,7 +335,16 @@ def main():
     if args.dry_run:
         print(f"Subject: {subject}\n")
         print(plain_text)
+    elif delivery_mode == "gog":
+        send_email_gog(
+            from_addr=config["_from"],
+            to_addr=config["_to"],
+            subject=subject,
+            plain_text=plain_text,
+            html_body=html_body,
+        )
     else:
+        smtp_config = config["smtp"]
         smtp_password = os.environ.get("SMTP_PASSWORD", "")
         if not smtp_password:
             log.error("SMTP_PASSWORD not set in environment. Add it to .env")
@@ -286,8 +352,8 @@ def main():
         send_email(
             host=smtp_config["host"],
             port=smtp_config["port"],
-            from_addr=smtp_config["from"],
-            to_addr=smtp_config["to"],
+            from_addr=config["_from"],
+            to_addr=config["_to"],
             password=smtp_password,
             subject=subject,
             plain_text=plain_text,

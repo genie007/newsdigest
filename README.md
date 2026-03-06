@@ -9,6 +9,7 @@ Configurable news digest via email. Pulls stories from **Hacker News** and **RSS
 - **Sort by engagement** — HN stories sorted by points, RSS by publish date
 - **HTML + plain text** — rich email with plain-text fallback
 - **Dry-run mode** — preview the digest in your terminal without sending
+- **Dual delivery** — send via SMTP (standalone) or gog CLI (no password needed)
 - **OpenClaw integration** — skill + cron job for automated daily digests
 
 ## Quickstart
@@ -21,11 +22,7 @@ pip install -e .
 
 # Configure
 cp config.example.yaml config.yaml
-# Edit config.yaml with your email addresses
-
-cp .env.example .env
-# Add your Gmail App Password to .env
-# (Generate at https://myaccount.google.com/apppasswords)
+# Edit config.yaml with your email addresses and delivery mode
 
 # Test
 newsdigest --dry-run
@@ -34,18 +31,60 @@ newsdigest --dry-run
 newsdigest
 ```
 
+## Delivery Modes
+
+newsdigest supports two delivery modes, configured via the `delivery` key in `config.yaml`:
+
+### SMTP (standalone)
+
+Use this when running newsdigest independently. Requires a Gmail App Password.
+
+```yaml
+delivery: smtp
+
+email:
+  from: you@gmail.com
+  to: recipient@gmail.com
+
+smtp:
+  host: smtp.gmail.com
+  port: 465
+```
+
+```bash
+cp .env.example .env
+# Add your Gmail App Password to .env
+# (Generate at https://myaccount.google.com/apppasswords)
+```
+
+### gog (OpenClaw / gog users)
+
+Use this when gog CLI is already authenticated. No password or `.env` file needed.
+
+```yaml
+delivery: gog
+
+email:
+  from: you@gmail.com
+  to: recipient@gmail.com
+```
+
 ## Configuration
 
 ### config.yaml
 
 ```yaml
-smtp:
-  host: smtp.gmail.com
-  port: 465
+delivery: smtp  # or "gog"
+
+email:
   from: you@gmail.com
   to: recipient@gmail.com
 
-time_window: 24  # hours to look back
+smtp:              # only needed when delivery: smtp
+  host: smtp.gmail.com
+  port: 465
+
+time_window: 24    # hours to look back
 
 categories:
   - name: "Category Name"
@@ -59,7 +98,7 @@ categories:
 
 | Variable | Description |
 |---|---|
-| `SMTP_PASSWORD` | Gmail App Password (required for sending) |
+| `SMTP_PASSWORD` | Gmail App Password (only needed for `delivery: smtp`) |
 
 ## OpenClaw Integration
 
