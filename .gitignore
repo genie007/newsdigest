@@ -8,3 +8,4 @@ dist/
 build/
 .DS_Store
 config.yaml
+homes-config.yaml

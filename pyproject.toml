@@ -9,7 +9,7 @@ description = "Configurable news digest via email - pulls from Hacker News and R
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
-dependencies = ["python-dotenv", "feedparser", "pyyaml"]
+dependencies = ["python-dotenv", "feedparser", "pyyaml", "requests"]
 
 [project.scripts]
 newsdigest = "newsdigest:main"
