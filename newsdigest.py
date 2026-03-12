@@ -29,6 +29,7 @@ logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 log = logging.getLogger(__name__)
 
 HN_SEARCH_URL = "https://hn.algolia.com/api/v1/search?tags=story&query={query}&numericFilters=created_at_i>{since}"
+HN_FRONT_PAGE_URL = "https://hn.algolia.com/api/v1/search?tags=front_page&hitsPerPage={limit}"
 
 
 class Story(TypedDict):
@@ -145,6 +146,40 @@ def fetch_hn(query: str, since_ts: int, limit: int = 5) -> list[Story]:
         return items[:limit]
     except Exception as exc:
         log.error("HN fetch error for %r: %s", query, exc)
+        return []
+
+
+def fetch_hn_trending(keywords: list[str], limit: int = 5) -> list[Story]:
+    """Fetch current HN front page stories, filtered by keywords."""
+    try:
+        # Fetch more than needed since we filter by keywords
+        fetch_count = 200
+        full_url = HN_FRONT_PAGE_URL.format(limit=fetch_count)
+        req = urllib.request.Request(full_url, headers={"User-Agent": "newsdigest/0.1"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        items: list[Story] = []
+        keyword_patterns = [kw.lower() for kw in keywords]
+        for hit in data.get("hits", []):
+            title = hit.get("title", "")
+            url = hit.get("url") or f"https://news.ycombinator.com/item?id={hit.get('objectID', '')}"
+            title_lower = title.lower()
+            url_lower = url.lower()
+            searchable = f"{title_lower} {url_lower}"
+            if not any(kw in searchable for kw in keyword_patterns):
+                continue
+            items.append({
+                "title": title,
+                "url": url,
+                "points": hit.get("points", 0),
+                "comments": hit.get("num_comments", 0),
+                "source": "hn",
+                "published": hit.get("created_at_i", 0),
+            })
+        items.sort(key=lambda x: x["points"], reverse=True)
+        return items[:limit]
+    except Exception as exc:
+        log.error("HN trending fetch error: %s", exc)
         return []
 
 
@@ -275,9 +310,12 @@ def fetch_category(
 
     # Fetch HN stories
     hn_items: list[Story] = []
+    hn_trending_keywords = category.get("hn_trending_keywords")
+    if hn_trending_keywords:
+        hn_items = fetch_hn_trending(hn_trending_keywords, limit=limit + 5)
     hn_query = category.get("hn_query")
     if hn_query:
-        hn_items = fetch_hn(hn_query, since_ts, limit=limit + 5)
+        hn_items.extend(fetch_hn(hn_query, since_ts, limit=limit + 5))
 
     # Fetch RSS stories
     rss_items: list[Story] = []
